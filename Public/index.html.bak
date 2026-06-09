@@ -1,0 +1,1364 @@
+
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedidos Live</title>
+<style>
+:root{--primary:#2563eb;--dark:#111827;--muted:#6b7280;--border:#e5e7eb;--card:#fff;--green:#16a34a;--red:#dc2626}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#eef2ff,#f8fafc);color:var(--dark)}
+header{background:rgba(255,255,255,.9);border-bottom:1px solid var(--border);padding:14px;display:flex;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:2}
+button{border:0;border-radius:10px;padding:10px 13px;background:var(--primary);color:white;font-weight:700;cursor:pointer}
+button.light{background:#e5e7eb;color:#111827}button.red{background:var(--red)}button.green{background:var(--green)}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--border);border-radius:10px}
+textarea{height:240px;font-family:Consolas,monospace;font-size:13px}
+main{max-width:1200px;margin:auto;padding:20px}.screen{display:none}.active{display:block}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;margin-bottom:18px;box-shadow:0 14px 30px rgba(15,23,42,.08)}
+.menu{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;margin-top:25px}.menu .card{cursor:pointer}
+.produto{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #eee}
+.nome{font-size:14px;font-weight:800}.qty{display:flex;align-items:center;gap:4px}.qty button{width:31px;height:31px;padding:0;font-size:18px}.qty input{width:52px;text-align:center;padding:6px;font-weight:800}
+.pedido,.stock-row,.check-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #eee}
+.badge{display:inline-block;background:#e0e7ff;color:#3730a3;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800}
+.badge.red{background:#fee2e2;color:#991b1b}.badge.green{background:#dcfce7;color:#166534}.estado{font-size:22px;font-weight:900;color:var(--green)}.muted{color:var(--muted)}
+.row{display:grid;grid-template-columns:1fr 150px 100px auto;gap:8px;align-items:end}.stock-input{width:90px}.catalogo-edit{display:grid;grid-template-columns:minmax(160px,1fr) minmax(150px,1fr) 90px auto auto;gap:8px;align-items:center;width:100%}.catalogo-edit input{margin:0}@media(max-width:720px){.catalogo-edit{grid-template-columns:1fr}.row{grid-template-columns:1fr}}
+@media(max-width:850px){.grid{grid-template-columns:1fr}.row{grid-template-columns:1fr}}
+
+.stock-table-wrap {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
+.stock-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.stock-table th,
+.stock-table td {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 5px 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.stock-table th:first-child,
+.stock-table td:first-child {
+  text-align: left;
+  position: sticky;
+  left: 0;
+  background: white;
+}
+
+.stock-table th {
+  background: #f9fafb;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.stock-table .item-name {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.stock-table .item-code {
+  font-size: 9px;
+  color: #6b7280;
+}
+
+.stock-table .stock-ok {
+  color: #166534;
+  font-weight: 800;
+}
+
+.stock-table .stock-zero {
+  color: #991b1b;
+  font-weight: 800;
+}
+
+.stock-table .not-associated {
+  color: #9ca3af;
+}
+
+.historico-pedido{padding:10px 0;border-bottom:1px solid #eee}
+.historico-pedido h4{margin:0 0 4px 0}
+.historico-pedido ul{margin:6px 0 0 18px;padding:0}
+.historico-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+
+</style>
+</head>
+<body>
+<header id="mainHeader" style="display:none">
+  <button class="light" onclick="voltarEventos()">Eventos</button>
+  <button class="light" onclick="show('home')">Início</button>
+  <button class="light" onclick="show('cliente')">Cliente</button>
+  <button class="light" onclick="show('operador')">Operador</button>
+  <button class="light" onclick="show('inventario')">Inventário</button>
+  <button class="light" onclick="show('def')">Definições</button>
+</header>
+
+<main>
+<section id="eventos" class="screen active">
+  <div class="card">
+    <h1>Eventos / Festas</h1>
+    <p class="muted">Cria um evento antes de entrar. Cada evento tem a sua própria base de dados: itens, códigos de barras, locais, pedidos, stock central e stock por bar.</p>
+  </div>
+  <div class="grid">
+    <div class="card">
+      <h2>Criar novo evento</h2>
+      <label>Nome do evento</label>
+      <input id="novoEventoNome" placeholder="Ex: Festa Finalistas 2026">
+      <label style="margin-top:12px;display:block">Data / nota</label>
+      <input id="novoEventoData" placeholder="Ex: 24/05/2026 ou Pavilhão Municipal">
+      <button style="margin-top:12px" onclick="criarEvento()">Criar e entrar</button>
+    </div>
+    <div class="card">
+      <h2>Eventos guardados</h2>
+      <div id="listaEventos"></div>
+    </div>
+  </div>
+</section>
+
+<section id="home" class="screen">
+  <div class="card">
+    <h1>Pedidos Live</h1>
+    <p><span class="badge" id="eventoAtualBadge">Sem evento selecionado</span></p>
+    <p class="muted">Stock central + stock por bar. Quando o cliente confirma Entregue, o stock sai do central e entra no bar. Os dados ficam separados por evento.</p>
+  </div>
+  <div class="menu">
+    <div class="card" onclick="show('cliente')"><h2>🛒 Cliente</h2><p>Escolher local e enviar pedido.</p></div>
+    <div class="card" onclick="show('operador')"><h2>👨‍🍳 Operador</h2><p>Pedidos e stock global atual.</p></div>
+    <div class="card" onclick="show('inventario')"><h2>📊 Inventário</h2><p>Dias do evento, contagens, estatísticas e desvios.</p></div>
+    <div class="card" onclick="show('def')"><h2>⚙️ Definições</h2><p>Criar locais, itens, associar e definir stock global.</p></div>
+  </div>
+</section>
+
+<section id="cliente" class="screen">
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Cliente</h2>
+        <label>Local</label>
+        <select id="clienteLocal" onchange="trocarLocalCliente()"></select>
+
+        <label style="margin-top:12px;">Password do local</label>
+        <input id="clientePassword" type="password" placeholder="Password" oninput="bloquearLocal()">
+
+        <button style="margin-top:10px;" onclick="validarPasswordCliente()">Entrar</button>
+        <p id="estadoLoginCliente" class="muted">Insere a password para aceder ao local.</p>
+      </div>
+      <div class="card">
+        <h3>Itens disponíveis</h3>
+        <div id="produtosCliente"></div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Carrinho</h2>
+        <ul id="carrinho"></ul>
+        <button class="green" onclick="enviarPedido()">Enviar pedido</button>
+      </div>
+      <div class="card">
+        <h2>Confirmar entrega</h2>
+        <button onclick="estado('Entregue')">Entregue + adicionar ao bar</button>
+      </div>
+      <div class="card">
+        <h2>Último pedido</h2>
+        <div id="ultimoPedido" class="muted">Ainda sem pedido.</div>
+      </div>
+      <div class="card">
+        <h2>Histórico deste cliente</h2>
+        <p class="muted">Guardado apenas neste dispositivo/navegador.</p>
+        <div class="historico-actions">
+          <button class="light" onclick="mostrarHistoricoCliente()">Atualizar</button>
+          <button class="red" onclick="limparHistoricoCliente()">Limpar histórico</button>
+        </div>
+        <div id="historicoCliente" class="muted">Ainda sem histórico.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="operador" class="screen">
+  <div class="grid">
+    <div class="card">
+      <h2>Pedidos de todos os locais</h2>
+      <div id="listaPedidos"></div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Pedido selecionado</h2>
+        <div id="pedidoSelecionado" class="muted">Seleciona um pedido.</div>
+        <div style="margin-top:12px">
+          <button onclick="estado('A aguardar')">A aguardar</button>
+          <button onclick="estado('Em processamento')">Em processamento</button>
+          <button onclick="estado('A caminho')">A caminho</button>
+          
+        </div>
+      </div>
+      <div class="card">
+        <h2>Stock central atual</h2>
+        <div id="stockOperador"></div>
+      </div>
+
+      <div class="card">
+        <h2>Stock por bar</h2>
+        <p class="muted">Todos os locais lado a lado. Cada coluna é um bar/local.</p>
+        <div id="stockBarOperador"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="inventario" class="screen">
+  <div class="card">
+    <h1>Inventário</h1>
+    <p class="muted">Cria dias dentro do evento e regista contagens de fim do dia ou final do evento. A app calcula desvios entre o stock do sistema e a contagem real. Ao guardar um Fim do dia, o stock de cada local passa automaticamente para as quantidades contadas nesse local.</p>
+  </div>
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Dias do evento</h2>
+        <div class="row">
+          <input id="novoDiaNome" placeholder="Ex: Dia 1 / Sexta-feira">
+          <input id="novoDiaData" placeholder="Data / nota">
+          <button onclick="criarDia()">Criar dia</button>
+        </div>
+        <div id="listaDiasInventario"></div>
+      </div>
+      <div class="card">
+        <h2>Novo registo de inventário</h2>
+        <label>Tipo</label>
+        <select id="inventarioTipo" onchange="mostrarFormularioInventario()">
+          <option value="fim_dia">Fim do dia</option>
+          <option value="final_evento">Final do evento</option>
+        </select>
+        <label style="margin-top:10px;display:block">Dia</label>
+        <select id="inventarioDia"></select>
+        <label style="margin-top:10px;display:block">Nota</label>
+        <input id="inventarioNota" placeholder="Ex: contagem feita às 02:00">
+        <h3>Contagem real total por locais</h3>
+        <p class="muted">Escolhe primeiro o local/bar. Depois aparecem apenas os itens desse local para fazer a contagem.</p>
+        <label style="margin-top:10px;display:block">Local / Bar</label>
+        <select id="inventarioLocal" onchange="mudarLocalInventario()"></select>
+        <div id="contagensInventario" style="margin-top:10px"></div>
+        <button class="green" onclick="guardarInventario()">Guardar inventário e fechar dia</button>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Resumo final do evento</h2>
+        <div id="resumoInventario"></div>
+      </div>
+      <div class="card">
+        <h2>Registos e desvios</h2>
+        <div id="listaInventarios"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="def" class="screen">
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Criar locais</h2>
+        <div class="row">
+          <input id="novoLocalDef" placeholder="Ex: BAR TERRA">
+          <input id="novaPasswordLocalDef" placeholder="Password">
+          <button onclick="criarLocalDef()">Criar local</button>
+        </div>
+        <h3>Locais existentes</h3>
+        <div id="listaLocaisDef"></div>
+      </div>
+
+      <div class="card">
+        <h2>Passwords dos locais</h2>
+        <p class="muted">Define a password que cada bar/local usa para entrar no lado Cliente.</p>
+        <div id="passwordsLocaisDef"></div>
+      </div>
+
+      <div class="card">
+        <h2>Base de dados de itens + stock central</h2>
+        <div class="row">
+          <input id="novoItemNome" placeholder="Nome do item">
+          <input id="novoItemCodigo" placeholder="Código de barras">
+          <input id="novoItemStock" type="number" min="0" placeholder="Stock">
+          <button onclick="criarItem()">Adicionar</button>
+        </div>
+        <div id="catalogoLista"></div>
+      </div>
+
+      <div class="card">
+        <h2>Associar itens aos locais</h2>
+        <label>Local</label>
+        <select id="defLocal" onchange="mostrarAssociacao()"></select>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin:12px 0;">
+          <button type="button" onclick="selecionarTodosItens()">Selecionar todos</button>
+          <button type="button" class="light" onclick="removerTodosItens()">Remover todos</button>
+        </div>
+
+        <div id="associacaoItens"></div>
+        <button onclick="guardarAssociacao()">Guardar associação</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Importar listas</h2>
+<textarea id="jsonImportar">{
+  "listas": [
+    {
+      "nome": "BAR PRAIA",
+      "itens": [
+        { "nome": "Imperial", "codigo": "560000000101", "stock": 20 },
+        { "nome": "Sandes", "codigo": "560000000102", "stock": 15 }
+      ]
+    }
+  ]
+}</textarea>
+      <button onclick="importarListas()">Importar</button>
+    </div>
+  </div>
+</section>
+</main>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket=io();
+let eventos=[],eventoAtual=null,catalogo=[],locais=[],pedidos=[],dias=[],inventarios=[],carrinho=[],pedidoAtual=null,ultimoPedidoCliente=null;
+let inventarioLocalSelecionado=null;
+let inventarioContagensLocaisDraft={};
+let clienteLocalAutenticadoId = null;
+let clientePasswordAtual = "";
+
+function show(id){
+  if(id !== "eventos" && !eventoAtual){
+    alert("Cria ou escolhe um evento primeiro.");
+    id = "eventos";
+  }
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+function api(url){
+  if(!eventoAtual) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}eventoId=${eventoAtual.id}`;
+}
+
+function voltarEventos(){
+  document.getElementById("mainHeader").style.display="none";
+  show("eventos");
+}
+
+function mostrarEventos(){
+  const div=document.getElementById("listaEventos");
+  if(!div)return;
+  div.innerHTML="";
+  if(!eventos.length){div.innerHTML='<p class="muted">Ainda não existem eventos.</p>';return}
+  eventos.slice().reverse().forEach(ev=>{
+    const row=document.createElement("div");
+    row.className="pedido";
+    row.innerHTML=`
+      <div>
+        <strong>${ev.nome}</strong><br>
+        <span class="muted">${ev.data || "Sem data"} · ${ev.totalPedidos || 0} pedidos · ${ev.totalLocais || 0} locais</span>
+      </div>
+      <button onclick="entrarEvento(${ev.id})">Entrar</button>
+    `;
+    div.appendChild(row);
+  });
+}
+
+async function criarEvento(){
+  const nome=document.getElementById("novoEventoNome").value.trim();
+  const data=document.getElementById("novoEventoData").value.trim();
+  if(!nome){alert("Escreve o nome do evento.");return}
+  const r=await fetch("/eventos",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({nome,data})
+  });
+  const ev=await r.json();
+  if(!r.ok){alert(ev.erro||"Erro ao criar evento.");return}
+  document.getElementById("novoEventoNome").value="";
+  document.getElementById("novoEventoData").value="";
+  entrarEvento(ev.id);
+}
+
+async function entrarEvento(id){
+  eventoAtual = eventos.find(e=>e.id===id) || {id};
+  socket.emit("selecionarEvento", id);
+  const r=await fetch(`/evento-atual?eventoId=${id}`);
+  const dados=await r.json();
+  if(!r.ok){alert(dados.erro||"Erro ao abrir evento.");eventoAtual=null;return}
+  eventoAtual=dados.evento;
+  catalogo=dados.catalogo||[];
+  locais=dados.locais||[];
+  pedidos=dados.pedidos||[];
+  dias=dados.dias||[];
+  inventarios=dados.inventarios||[];
+  await carregarInventarios();
+  carrinho=[];
+  pedidoAtual=null;
+  ultimoPedidoCliente=null;
+  clienteLocalAutenticadoId=null;
+  clientePasswordAtual="";
+  document.getElementById("mainHeader").style.display="flex";
+  document.getElementById("eventoAtualBadge").innerText=`Evento: ${eventoAtual.nome}${eventoAtual.data ? " · "+eventoAtual.data : ""}`;
+  refreshTudo();
+  mostrarCarrinho();
+  show("home");
+}
+
+function preencherSelect(id){
+  const s=document.getElementById(id);
+  if(!s)return;
+  const atual=s.value;
+  s.innerHTML="";
+  locais.forEach(l=>{
+    const op=document.createElement("option");
+    op.value=l.id;
+    op.innerText=l.nome;
+    s.appendChild(op);
+  });
+  if(atual)s.value=atual;
+}
+
+function refreshTudo(){
+  preencherSelect("clienteLocal");
+  preencherSelect("defLocal");
+  
+  mostrarProdutosCliente();
+  mostrarPedidos();
+  mostrarStockOperador();
+  mostrarStockBarOperador();
+  mostrarCatalogo();
+  mostrarAssociacao();
+  mostrarLocaisDef();
+  mostrarPasswordsLocaisDef();
+  mostrarInventario();
+  mostrarHistoricoCliente();
+}
+
+function localCliente(){
+  return locais.find(l=>l.id==document.getElementById("clienteLocal").value);
+}
+
+function trocarLocalCliente(){
+  carrinho=[];
+  clienteLocalAutenticadoId = null;
+  clientePasswordAtual = "";
+  document.getElementById("clientePassword").value = "";
+  document.getElementById("estadoLoginCliente").innerText = "Insere a password para aceder ao local.";
+  mostrarProdutosCliente();
+  mostrarCarrinho();
+  mostrarHistoricoCliente();
+}
+
+function bloquearLocal(){
+  clienteLocalAutenticadoId = null;
+  clientePasswordAtual = "";
+  document.getElementById("estadoLoginCliente").innerText = "Password alterada. Clica em Entrar.";
+  carrinho = [];
+  mostrarProdutosCliente();
+  mostrarCarrinho();
+}
+
+async function validarPasswordCliente(){
+  const local = localCliente();
+
+  if(!local){
+    alert("Seleciona um local.");
+    return;
+  }
+
+  const password = document.getElementById("clientePassword").value;
+
+  const r = await fetch(api(`/locais/${local.id}/validar-password`), {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({ password })
+  });
+
+  const dados = await r.json();
+
+  if(dados.ok){
+    clienteLocalAutenticadoId = local.id;
+    clientePasswordAtual = password;
+    document.getElementById("estadoLoginCliente").innerText = "Acesso autorizado.";
+  }else{
+    clienteLocalAutenticadoId = null;
+    clientePasswordAtual = "";
+    document.getElementById("estadoLoginCliente").innerText = "Password errada.";
+  }
+
+  mostrarProdutosCliente();
+}
+
+function getQuantidade(id){
+  const i=carrinho.find(x=>x.id===id);
+  return i?i.quantidade:0;
+}
+
+function itemDoLocal(id){
+  const local=localCliente();
+  return local?.itens.find(i=>i.id===id);
+}
+
+function mostrarProdutosCliente(){
+  const local=localCliente();
+  const div=document.getElementById("produtosCliente");
+  div.innerHTML="";
+
+  if(!local){
+    div.innerHTML='<p class="muted">Não há locais criados.</p>';
+    return;
+  }
+
+  if(clienteLocalAutenticadoId !== local.id){
+    div.innerHTML='<p class="muted">Insere a password correta para ver os itens deste local.</p>';
+    return;
+  }
+
+  if(!local.itens.length){
+    div.innerHTML='<p class="muted">Este local ainda não tem itens associados.</p>';
+    return;
+  }
+
+  local.itens.forEach(item=>{
+    const q=getQuantidade(item.id);
+    const row=document.createElement("div");
+    row.className="produto";
+
+    if(item.stock<=0){
+      row.innerHTML=`
+        <div>
+          <div class="nome">${item.nome}</div>
+          <div class="muted">Código: ${item.codigo || "-"}</div><div class="muted">Stock central: 0</div>
+        </div>
+        <span class="badge red">Sem stock</span>
+      `;
+    }else{
+      row.innerHTML=`
+        <div>
+          <div class="nome">${item.nome}</div>
+          <div class="muted">Código: ${item.codigo || "-"}</div><div class="muted">Stock central: ${item.stock}</div>
+        </div>
+        <div class="qty">
+          <button onclick="menos(${item.id})">-</button>
+          <input type="number" min="0" max="${item.stock}" value="${q}" onchange="manual(${item.id}, this.value)">
+          <button onclick="mais(${item.id})">+</button>
+        </div>
+      `;
+    }
+    div.appendChild(row);
+  });
+}
+
+function mais(id){
+  const item=itemDoLocal(id);
+  if(!item||item.stock<=0)return;
+  const e=carrinho.find(i=>i.id===id);
+
+  if(e){
+    if(e.quantidade<item.stock)e.quantidade++;
+  }else{
+    carrinho.push({id:item.id,nome:item.nome,quantidade:1});
+  }
+
+  mostrarProdutosCliente();
+  mostrarCarrinho();
+}
+
+function menos(id){
+  const e=carrinho.find(i=>i.id===id);
+  if(!e)return;
+  e.quantidade--;
+  if(e.quantidade<=0)carrinho=carrinho.filter(i=>i.id!==id);
+  mostrarProdutosCliente();
+  mostrarCarrinho();
+}
+
+function manual(id,valor){
+  const item=itemDoLocal(id);
+  if(!item||item.stock<=0)return;
+
+  valor=Math.max(0,Number(valor)||0);
+  valor=Math.min(valor,item.stock);
+
+  const e=carrinho.find(i=>i.id===id);
+
+  if(valor===0)carrinho=carrinho.filter(i=>i.id!==id);
+  else if(e)e.quantidade=valor;
+  else carrinho.push({id:item.id,nome:item.nome,quantidade:valor});
+
+  mostrarProdutosCliente();
+  mostrarCarrinho();
+}
+
+function mostrarCarrinho(){
+  const ul=document.getElementById("carrinho");
+  ul.innerHTML="";
+  if(!carrinho.length)ul.innerHTML='<li class="muted">Carrinho vazio.</li>';
+  carrinho.forEach(i=>{
+    const li=document.createElement("li");
+    li.innerText=`${i.quantidade}x ${i.nome}`;
+    ul.appendChild(li);
+  });
+}
+
+async function enviarPedido(){
+  const local=localCliente();
+  if(!local){alert("Seleciona um local.");return}
+  if(clienteLocalAutenticadoId !== local.id){alert("Insere a password correta do local.");return}
+  if(!carrinho.length){alert("Carrinho vazio.");return}
+
+  const r=await fetch(api("/pedidos"),{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({localId:local.id,password:clientePasswordAtual,itens:carrinho})
+  });
+
+  const dados=await r.json();
+  if(!r.ok){alert(dados.erro||"Erro ao enviar pedido.");return}
+
+  ultimoPedidoCliente=dados;
+  pedidoAtual=dados;
+  gravarPedidoNoHistorico(dados);
+  carrinho=[];
+  mostrarCarrinho();
+  mostrarProdutosCliente();
+  mostrarUltimoPedido();
+}
+
+function mostrarUltimoPedido(){
+  const div=document.getElementById("ultimoPedido");
+  if(!ultimoPedidoCliente){div.innerHTML="Ainda sem pedido.";return}
+  div.innerHTML=`
+    <h3>${ultimoPedidoCliente.codigo}</h3>
+    <div class="estado">${ultimoPedidoCliente.estado}</div>
+    <ul>${ultimoPedidoCliente.itens.map(i=>`<li>${i.quantidade}x ${i.nome}</li>`).join("")}</ul>
+  `;
+}
+
+function chaveHistoricoCliente(){
+  const local=localCliente();
+  const eventoId=eventoAtual?.id || "sem-evento";
+  const localId=local?.id || "sem-local";
+  return `historicoClientePedidos:${eventoId}:${localId}`;
+}
+
+function lerHistoricoCliente(){
+  try{
+    const dados=JSON.parse(localStorage.getItem(chaveHistoricoCliente()) || "[]");
+    return Array.isArray(dados) ? dados : [];
+  }catch{
+    return [];
+  }
+}
+
+function guardarHistoricoCliente(lista){
+  localStorage.setItem(chaveHistoricoCliente(), JSON.stringify(lista.slice(0,50)));
+}
+
+function gravarPedidoNoHistorico(pedido){
+  if(!pedido || !eventoAtual)return;
+  const local=localCliente();
+  const entrada={
+    id:pedido.id,
+    codigo:pedido.codigo,
+    estado:pedido.estado,
+    localId:local?.id || pedido.localId || null,
+    localNome:local?.nome || pedido.local || "Local",
+    criadoEm:pedido.criadoEm || new Date().toISOString(),
+    atualizadoEm:new Date().toISOString(),
+    itens:(pedido.itens || []).map(i=>({id:i.id,nome:i.nome,quantidade:i.quantidade}))
+  };
+  const lista=lerHistoricoCliente().filter(p=>p.id!==entrada.id);
+  lista.unshift(entrada);
+  guardarHistoricoCliente(lista);
+  mostrarHistoricoCliente();
+}
+
+function atualizarPedidoNoHistorico(pedido){
+  if(!pedido || !eventoAtual)return;
+  const lista=lerHistoricoCliente();
+  const idx=lista.findIndex(p=>p.id===pedido.id);
+  if(idx<0)return;
+  lista[idx]={
+    ...lista[idx],
+    estado:pedido.estado,
+    atualizadoEm:new Date().toISOString(),
+    itens:(pedido.itens || lista[idx].itens || []).map(i=>({id:i.id,nome:i.nome,quantidade:i.quantidade}))
+  };
+  guardarHistoricoCliente(lista);
+  mostrarHistoricoCliente();
+}
+
+function mostrarHistoricoCliente(){
+  const div=document.getElementById("historicoCliente");
+  if(!div)return;
+  const lista=lerHistoricoCliente();
+  if(!lista.length){div.innerHTML="Ainda sem histórico.";return}
+  div.innerHTML=lista.map(p=>`
+    <div class="historico-pedido">
+      <h4>${p.codigo || "Pedido"} <span class="badge">${p.estado || "Sem estado"}</span></h4>
+      <div class="muted">${p.localNome || "Local"} · ${new Date(p.criadoEm || p.atualizadoEm).toLocaleString()}</div>
+      <ul>${(p.itens || []).map(i=>`<li>${i.quantidade}x ${i.nome}</li>`).join("")}</ul>
+    </div>
+  `).join("");
+}
+
+function limparHistoricoCliente(){
+  if(!confirm("Limpar o histórico deste evento/local neste dispositivo?"))return;
+  localStorage.removeItem(chaveHistoricoCliente());
+  mostrarHistoricoCliente();
+}
+
+async function criarLocalDef(){
+  const nome=document.getElementById("novoLocalDef").value.trim();
+  const password=document.getElementById("novaPasswordLocalDef").value.trim() || "1234";
+  if(!nome){alert("Escreve o nome do local.");return}
+
+  const r=await fetch(api("/locais"),{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({nome,password})
+  });
+
+  const dados=await r.json();
+  if(!r.ok)alert(dados.erro||"Erro ao criar local.");
+  else{
+    document.getElementById("novoLocalDef").value="";
+    document.getElementById("novaPasswordLocalDef").value="";
+  }
+}
+
+function mostrarLocaisDef(){
+  const div=document.getElementById("listaLocaisDef");
+  if(!div)return;
+  div.innerHTML="";
+  if(!locais.length){div.innerHTML='<p class="muted">Ainda não existem locais.</p>';return}
+
+  locais.forEach(l=>{
+    const row=document.createElement("div");
+    row.className="stock-row";
+    row.innerHTML=`<strong>${l.nome}</strong><span class="muted">${l.itens.length} itens associados</span>`;
+    div.appendChild(row);
+  });
+}
+
+function mostrarPasswordsLocaisDef(){
+  const div = document.getElementById("passwordsLocaisDef");
+  if(!div)return;
+
+  div.innerHTML = "";
+
+  if(!locais.length){
+    div.innerHTML = '<p class="muted">Ainda não existem locais.</p>';
+    return;
+  }
+
+  locais.forEach(local=>{
+    const row=document.createElement("div");
+    row.className="stock-row";
+    row.innerHTML=`
+      <strong>${local.nome}</strong>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <input id="password-local-${local.id}" value="${local.password || ""}" style="width:140px">
+        <button onclick="guardarPasswordLocal(${local.id})">Guardar</button>
+      </div>
+    `;
+    div.appendChild(row);
+  });
+}
+
+async function guardarPasswordLocal(localId){
+  const input=document.getElementById("password-local-"+localId);
+  const password=input.value.trim();
+
+  if(!password){
+    alert("Password não pode ficar vazia.");
+    return;
+  }
+
+  const r=await fetch(api(`/locais/${localId}/password`),{
+    method:"PATCH",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({password})
+  });
+
+  const dados=await r.json();
+
+  if(!r.ok){
+    alert(dados.erro || "Erro ao guardar password.");
+  }else{
+    alert("Password guardada.");
+  }
+}
+
+
+function mostrarPedidos(){
+  const div=document.getElementById("listaPedidos");
+  div.innerHTML="";
+  if(!pedidos.length){div.innerHTML='<p class="muted">Ainda não existem pedidos.</p>';return}
+
+  pedidos.slice().reverse().forEach(p=>{
+    const row=document.createElement("div");
+    row.className="pedido";
+    row.innerHTML=`
+      <div>
+        <strong>${p.codigo}</strong><br>
+        <span class="badge">${p.estado}</span>
+        <span class="muted">${p.itens.length} itens</span>
+      </div>
+      <button onclick="abrirPedido(${p.id})">Abrir</button>
+    `;
+    div.appendChild(row);
+  });
+}
+
+function abrirPedido(id){
+  pedidoAtual=pedidos.find(p=>p.id===id);
+  document.getElementById("pedidoSelecionado").innerHTML=`
+    <h3>${pedidoAtual.codigo}</h3>
+    <div class="estado">${pedidoAtual.estado}</div>
+    <ul>${pedidoAtual.itens.map(i=>`<li>${i.quantidade}x ${i.nome}</li>`).join("")}</ul>
+  `;
+}
+
+async function estado(e){
+  if(!pedidoAtual){alert("Seleciona um pedido.");return}
+  await fetch(api("/pedidos/"+pedidoAtual.id),{
+    method:"PATCH",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({estado:e})
+  });
+}
+
+function mostrarStockOperador(){
+  const div=document.getElementById("stockOperador");
+  if(!div)return;
+  div.innerHTML="";
+
+  if(!catalogo.length){
+    div.innerHTML='<p class="muted">Ainda não existem itens.</p>';
+    return;
+  }
+
+  catalogo.forEach(item=>{
+    const row=document.createElement("div");
+    row.className="stock-row";
+    row.innerHTML=`
+      <div><strong>${item.nome}</strong><br><span class="muted">Código: ${item.codigo || "-"}</span></div>
+      <span class="${item.stock<=0?'badge red':'badge green'}">Stock central: ${item.stock}</span>
+    `;
+    div.appendChild(row);
+  });
+}
+
+
+function mostrarStockBarOperador(){
+  const div = document.getElementById("stockBarOperador");
+  if(!div) return;
+
+  div.innerHTML = "";
+
+  if(!catalogo.length){
+    div.innerHTML = '<p class="muted">Ainda não existem itens.</p>';
+    return;
+  }
+
+  if(!locais.length){
+    div.innerHTML = '<p class="muted">Ainda não existem locais.</p>';
+    return;
+  }
+
+  let tabela = `
+    <div class="stock-table-wrap">
+      <table class="stock-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            ${locais.map(local => `<th>${local.nome}</th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  catalogo.forEach(item => {
+    tabela += `
+      <tr>
+        <td>
+          <div class="item-name">${item.nome}</div>
+          <div class="item-code">${item.codigo || "-"}</div>
+        </td>
+        ${locais.map(local => {
+          const itemNoBar = (local.itens || []).find(i => i.id === item.id);
+
+          if(!itemNoBar){
+            return `<td class="not-associated">—</td>`;
+          }
+
+          const stockBar = Number(itemNoBar.stockBar || 0);
+
+          return `<td class="${stockBar <= 0 ? "stock-zero" : "stock-ok"}">${stockBar}</td>`;
+        }).join("")}
+      </tr>
+    `;
+  });
+
+  tabela += `
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  div.innerHTML = tabela;
+}
+
+function valorInput(v){
+  return String(v ?? "").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function mostrarCatalogo(){
+  const div=document.getElementById("catalogoLista");
+  div.innerHTML="";
+  if(!catalogo.length){div.innerHTML='<p class="muted">Ainda não existem itens.</p>';return}
+
+  catalogo.forEach(item=>{
+    const row=document.createElement("div");
+    row.className="stock-row";
+    row.innerHTML=`
+      <div class="catalogo-edit">
+        <input id="edit-nome-${item.id}" value="${valorInput(item.nome)}" placeholder="Nome do item">
+        <input id="edit-codigo-${item.id}" value="${valorInput(item.codigo || "")}" placeholder="Código de barras">
+        <input id="edit-stock-${item.id}" class="stock-input" type="number" min="0" value="${Number(item.stock || 0)}" placeholder="Stock">
+        <button onclick="guardarItem(${item.id})">Guardar</button>
+        <button class="red" onclick="removerItem(${item.id})">Remover</button>
+      </div>
+    `;
+    div.appendChild(row);
+  });
+}
+
+async function atualizarStockGlobal(id,valor){
+  const item=catalogo.find(i=>i.id===id);
+  if(!item)return;
+  await guardarItem(id, { nome:item.nome, codigo:item.codigo || "", stock:Math.max(0,Number(valor)||0) });
+}
+
+async function guardarItem(id, dadosManuais){
+  const item=catalogo.find(i=>i.id===id);
+  if(!item)return;
+
+  const dados=dadosManuais || {
+    nome:document.getElementById("edit-nome-"+id).value.trim(),
+    codigo:document.getElementById("edit-codigo-"+id).value.trim(),
+    stock:Math.max(0,Number(document.getElementById("edit-stock-"+id).value)||0)
+  };
+
+  if(!dados.nome){alert("O nome do item não pode ficar vazio.");return}
+
+  const r=await fetch(api(`/catalogo/${id}`),{
+    method:"PATCH",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(dados)
+  });
+
+  const resposta=await r.json();
+  if(!r.ok)alert(resposta.erro||"Erro ao guardar item.");
+}
+
+async function criarItem(){
+  const nome=document.getElementById("novoItemNome").value.trim();
+  const codigo=document.getElementById("novoItemCodigo").value.trim();
+  const stock=Math.max(0,Number(document.getElementById("novoItemStock").value)||0);
+  if(!nome){alert("Preenche o nome do item.");return}
+
+  const r=await fetch(api("/catalogo"),{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({nome,codigo,stock})
+  });
+
+  const dados=await r.json();
+  if(!r.ok)alert(dados.erro||"Erro ao criar item.");
+  else{
+    document.getElementById("novoItemNome").value="";
+    document.getElementById("novoItemCodigo").value="";
+    document.getElementById("novoItemStock").value="";
+  }
+}
+
+async function removerItem(id){
+  const item=catalogo.find(i=>i.id===id);
+  const nome=item?item.nome:"item";
+  if(!confirm(`Remover "${nome}" da base de dados e de todos os locais?`))return;
+
+  const r=await fetch(api("/catalogo/"+id),{method:"DELETE"});
+  const dados=await r.json();
+  if(!r.ok)alert(dados.erro||"Erro ao remover item.");
+}
+
+function selecionarTodosItens(){
+  document.querySelectorAll("#associacaoItens input[type=checkbox]").forEach(c=>c.checked=true);
+}
+
+function removerTodosItens(){
+  document.querySelectorAll("#associacaoItens input[type=checkbox]").forEach(c=>c.checked=false);
+}
+
+function mostrarAssociacao(){
+  const local=locais.find(l=>l.id==document.getElementById("defLocal").value);
+  const div=document.getElementById("associacaoItens");
+  if(!div)return;
+  div.innerHTML="";
+
+  if(!local){div.innerHTML='<p class="muted">Seleciona um local.</p>';return}
+
+  catalogo.forEach(item=>{
+    const checked=local.itens.some(i=>i.id===item.id);
+    const row=document.createElement("label");
+    row.className="check-row";
+    row.innerHTML=`
+      <span>${item.nome} <span class="muted">Código: ${item.codigo || "-"} · Stock central: ${item.stock}</span></span>
+      <input type="checkbox" value="${item.id}" ${checked?"checked":""} style="width:auto">
+    `;
+    div.appendChild(row);
+  });
+}
+
+async function guardarAssociacao(){
+  const localId=document.getElementById("defLocal").value;
+  const checks=document.querySelectorAll("#associacaoItens input[type=checkbox]:checked");
+  const itemIds=Array.from(checks).map(c=>Number(c.value));
+
+  await fetch(api(`/locais/${localId}/itens`),{
+    method:"PATCH",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({itemIds})
+  });
+
+  alert("Associação guardada.");
+}
+
+async function importarListas(){
+  let dados;
+  try{dados=JSON.parse(document.getElementById("jsonImportar").value)}
+  catch{alert("JSON inválido.");return}
+
+  const r=await fetch(api("/importar"),{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(dados)
+  });
+
+  if(!r.ok)alert("Erro ao importar.");
+  else alert("Importado.");
+}
+
+
+async function criarDia(){
+  const nome=document.getElementById("novoDiaNome").value.trim();
+  const data=document.getElementById("novoDiaData").value.trim();
+  if(!nome){alert("Escreve o nome do dia.");return}
+  const r=await fetch(api("/dias"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nome,data})});
+  const d=await r.json();
+  if(!r.ok){alert(d.erro||"Erro ao criar dia.");return}
+  document.getElementById("novoDiaNome").value="";
+  document.getElementById("novoDiaData").value="";
+}
+
+async function carregarInventarios(){
+  if(!eventoAtual)return;
+  const r=await fetch(api("/inventarios"));
+  if(r.ok) inventarios=await r.json();
+}
+
+function sistemaTotalItem(item){
+  let bar=0;
+  locais.forEach(local=>{
+    const it=(local.itens||[]).find(i=>i.id===item.id);
+    if(it) bar += Number(it.stockBar||0);
+  });
+  return Number(item.stock||0)+bar;
+}
+
+function mostrarInventario(){
+  mostrarDiasInventario();
+  mostrarFormularioInventario();
+  mostrarListaInventarios();
+  mostrarResumoInventario();
+}
+
+function mostrarDiasInventario(){
+  const div=document.getElementById("listaDiasInventario");
+  const sel=document.getElementById("inventarioDia");
+  if(!div||!sel)return;
+  div.innerHTML=""; sel.innerHTML="";
+  if(!dias.length){div.innerHTML='<p class="muted">Ainda não existem dias neste evento.</p>';}
+  dias.forEach(d=>{
+    const row=document.createElement("div");
+    row.className="stock-row";
+    row.innerHTML=`<strong>${d.nome}</strong><span class="muted">${d.data || "Sem data"}</span>`;
+    div.appendChild(row);
+    const op=document.createElement("option"); op.value=d.id; op.innerText=`${d.nome}${d.data?" · "+d.data:""}`; sel.appendChild(op);
+  });
+}
+
+function capturarContagensLocalAtual(){
+  const sel=document.getElementById("inventarioLocal");
+  const localId=Number(sel?.value || inventarioLocalSelecionado || 0);
+  if(!localId)return;
+  inventarioContagensLocaisDraft[localId]=inventarioContagensLocaisDraft[localId]||{};
+  document.querySelectorAll(".inventario-local-input").forEach(input=>{
+    const itemId=Number(input.dataset.item||0);
+    if(itemId) inventarioContagensLocaisDraft[localId][itemId]=Math.max(0,Number(input.value||0));
+  });
+}
+
+function totalRealItemDraft(itemId){
+  let total=0;
+  locais.forEach(local=>{
+    total += Number((inventarioContagensLocaisDraft[local.id]||{})[itemId]||0);
+  });
+  return total;
+}
+
+function atualizarResumoItemInventario(itemId, sistema){
+  const total=totalRealItemDraft(itemId);
+  const totalInput=document.getElementById(`contagem-item-${itemId}`);
+  if(totalInput) totalInput.value = total;
+  const desvio = total - sistema;
+  const desvioEl=document.getElementById(`desvio-item-${itemId}`);
+  if(desvioEl){
+    desvioEl.innerHTML = `Total real geral: <strong>${total}</strong> · Desvio: <strong>${desvio>0?'+':''}${desvio}</strong>`;
+  }
+}
+
+function mudarLocalInventario(){
+  capturarContagensLocalAtual();
+  const sel=document.getElementById("inventarioLocal");
+  inventarioLocalSelecionado=Number(sel?.value||0);
+  mostrarFormularioInventario(false);
+}
+
+function mostrarFormularioInventario(capturar=true){
+  if(capturar) capturarContagensLocalAtual();
+  const tipo=document.getElementById("inventarioTipo")?.value || "fim_dia";
+  const selDia=document.getElementById("inventarioDia");
+  if(selDia) selDia.disabled = tipo === "final_evento";
+  const selLocal=document.getElementById("inventarioLocal");
+  const div=document.getElementById("contagensInventario");
+  if(!div)return;
+  div.innerHTML="";
+
+  if(!locais.length){
+    if(selLocal) selLocal.innerHTML="";
+    div.innerHTML='<p class="muted">Ainda não existem locais/bares.</p>';
+    return;
+  }
+
+  if(!inventarioLocalSelecionado || !locais.some(l=>Number(l.id)===Number(inventarioLocalSelecionado))){
+    inventarioLocalSelecionado=Number(locais[0].id);
+  }
+
+  if(selLocal){
+    const atual=String(inventarioLocalSelecionado);
+    selLocal.innerHTML="";
+    locais.forEach(local=>{
+      const op=document.createElement("option");
+      op.value=local.id;
+      op.innerText=local.nome;
+      selLocal.appendChild(op);
+    });
+    selLocal.value=atual;
+  }
+
+  const local=locais.find(l=>Number(l.id)===Number(inventarioLocalSelecionado));
+  const itensLocal=(local?.itens&&local.itens.length?local.itens:catalogo.filter(item=>(local?.itemIds||[]).map(Number).includes(Number(item.id))));
+  if(!itensLocal.length){
+    div.innerHTML='<p class="muted">Este local ainda não tem itens associados.</p>';
+    return;
+  }
+
+  inventarioContagensLocaisDraft[inventarioLocalSelecionado]=inventarioContagensLocaisDraft[inventarioLocalSelecionado]||{};
+
+  const titulo=document.createElement("div");
+  titulo.className="stock-row";
+  titulo.innerHTML=`<strong>${local.nome}</strong><span class="badge">${itensLocal.length} itens</span>`;
+  div.appendChild(titulo);
+
+  itensLocal.forEach(item=>{
+    const itemCatalogo=catalogo.find(i=>Number(i.id)===Number(item.id)) || item;
+    const sistema=sistemaTotalItem(itemCatalogo);
+    const valorLocal=Number((inventarioContagensLocaisDraft[inventarioLocalSelecionado]||{})[item.id]||0);
+    const wrapper=document.createElement("div");
+    wrapper.className="card";
+    wrapper.innerHTML=`
+      <div class="stock-row">
+        <div>
+          <strong style="font-size:16px">${itemCatalogo.nome}</strong><br>
+          <span class="muted">Código: ${itemCatalogo.codigo || "-"} · Sistema total: ${sistema}</span>
+        </div>
+        <input type="number" min="0" value="${valorLocal}" 
+          data-item="${item.id}" 
+          data-local="${inventarioLocalSelecionado}" 
+          class="inventario-local-input"
+          style="width:120px"
+          oninput="inventarioContagensLocaisDraft[${inventarioLocalSelecionado}]=inventarioContagensLocaisDraft[${inventarioLocalSelecionado}]||{}; inventarioContagensLocaisDraft[${inventarioLocalSelecionado}][${item.id}]=Math.max(0,Number(this.value||0)); atualizarResumoItemInventario(${item.id}, ${sistema})">
+      </div>
+      <input id="contagem-item-${item.id}" type="hidden" value="${totalRealItemDraft(item.id)}">
+      <div class="muted" id="desvio-item-${item.id}" style="margin-top:6px;font-size:12px"></div>
+    `;
+    div.appendChild(wrapper);
+    atualizarResumoItemInventario(item.id, sistema);
+  });
+}
+
+function atualizarTotalInventario(itemId, sistema){
+  const inputs=[...document.querySelectorAll(`[data-item="${itemId}"]`)];
+  let total=0;
+  inputs.forEach(i=> total += Number(i.value||0));
+  const totalInput=document.getElementById(`contagem-item-${itemId}`);
+  if(totalInput) totalInput.value = total;
+
+  const desvio = total - sistema;
+  const desvioEl=document.getElementById(`desvio-item-${itemId}`);
+  if(desvioEl){
+    desvioEl.innerHTML = `Desvio: <strong>${desvio>0?'+':''}${desvio}</strong>`;
+  }
+}
+
+function estatisticasDoInventario(inv){
+  if(inv.estatisticas)return inv.estatisticas;
+  const contagens=inv.contagens||{};
+  return catalogo.map(item=>{
+    const sistema=sistemaTotalItem(item);
+    const real=Math.max(0,Number(contagens[item.id])||0);
+    const desvio=real-sistema;
+    const desvioAbs=Math.abs(desvio);
+    const desvioPercent=sistema>0?Number(((desvioAbs/sistema)*100).toFixed(2)):(real>0?100:0);
+    const vendido=pedidos.reduce((t,p)=>t+(p.itens||[]).filter(i=>i.id===item.id).reduce((s,i)=>s+Number(i.quantidade||0),0),0);
+    return {id:item.id,nome:item.nome,codigo:item.codigo||"",sistema,real,desvio,desvioAbs,desvioPercent,vendido,estado:desvio===0?"OK":(desvio<0?"Falta":"Excesso")};
+  });
+}
+
+async function guardarInventario(){
+  capturarContagensLocalAtual();
+  const tipo=document.getElementById("inventarioTipo").value;
+  const diaId=Number(document.getElementById("inventarioDia").value||0);
+  if(tipo==="fim_dia" && !diaId){alert("Cria ou escolhe um dia.");return}
+  const contagens={};
+  catalogo.forEach(item=>{contagens[item.id]=Math.max(0,Number(totalRealItemDraft(item.id))||0)});
+  const contagensLocais=inventarioContagensLocaisDraft;
+  const nota=document.getElementById("inventarioNota").value.trim();
+  const r=await fetch(api("/inventarios"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tipo,diaId,nota,contagens,contagensLocais})});
+  const d=await r.json();
+  if(!r.ok){alert(d.erro||"Erro ao guardar inventário.");return}
+  if(tipo==="fim_dia") alert("Fim do dia guardado. O stock dos locais foi transportado automaticamente para o dia seguinte.");
+  document.getElementById("inventarioNota").value="";
+  inventarioContagensLocaisDraft={};
+  await carregarInventarios();
+  mostrarInventario();
+}
+
+async function removerInventario(id){
+  if(!confirm("Remover este registo de inventário?"))return;
+  await fetch(api("/inventarios/"+id),{method:"DELETE"});
+  await carregarInventarios();
+  mostrarInventario();
+}
+
+function mostrarListaInventarios(){
+  const div=document.getElementById("listaInventarios");
+  if(!div)return;
+  div.innerHTML="";
+  if(!inventarios.length){div.innerHTML='<p class="muted">Ainda não há registos de inventário.</p>';return}
+  inventarios.slice().reverse().forEach(inv=>{
+    const dia=dias.find(d=>d.id===inv.diaId);
+    const stats=estatisticasDoInventario(inv);
+    const totalDesvio=stats.reduce((a,e)=>a+e.desvioAbs,0);
+    const linhas=stats.slice().sort((a,b)=>b.desvioAbs-a.desvioAbs).map(e=>`
+      <tr>
+        <td><strong>${e.nome}</strong><br><span class="muted">${e.codigo||"-"}</span></td>
+        <td>${e.sistema}</td><td>${e.real}</td>
+        <td class="${e.desvio===0?'stock-ok':'stock-zero'}">${e.desvio>0?"+":""}${e.desvio}</td>
+        <td>${e.desvioPercent}%</td><td>${e.vendido}</td><td>${e.estado}</td>
+      </tr>`).join("");
+    const card=document.createElement("div");
+    card.className="card";
+    card.innerHTML=`
+      <h3>${inv.tipo==="final_evento"?"Final do evento":"Fim do dia"} <span class="badge ${totalDesvio?"red":"green"}">Desvio total: ${totalDesvio}</span></h3>
+      <p class="muted">${dia?dia.nome:"Evento completo"} · ${new Date(inv.criadoEm).toLocaleString()} ${inv.nota?"· "+inv.nota:""}</p>
+      <div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Item</th><th>Sistema</th><th>Real</th><th>Desvio</th><th>%</th><th>Vendido</th><th>Estado</th></tr></thead><tbody>${linhas}</tbody></table></div>
+      <button class="red" style="margin-top:10px" onclick="removerInventario(${inv.id})">Remover registo</button>
+    `;
+    div.appendChild(card);
+  });
+}
+
+function mostrarResumoInventario(){
+  const div=document.getElementById("resumoInventario");
+  if(!div)return;
+  const totalVendido={};
+  pedidos.forEach(p=>(p.itens||[]).forEach(i=>{totalVendido[i.id]=(totalVendido[i.id]||0)+Number(i.quantidade||0)}));
+  const acumulado={};
+  inventarios.forEach(inv=>estatisticasDoInventario(inv).forEach(e=>{
+    if(!acumulado[e.id])acumulado[e.id]={nome:e.nome,codigo:e.codigo,vendido:e.vendido,desvioAbsTotal:0,faltas:0,excessos:0,registos:0};
+    acumulado[e.id].desvioAbsTotal+=e.desvioAbs;
+    if(e.desvio<0)acumulado[e.id].faltas+=Math.abs(e.desvio);
+    if(e.desvio>0)acumulado[e.id].excessos+=e.desvio;
+    acumulado[e.id].vendido=totalVendido[e.id]||e.vendido||0;
+    acumulado[e.id].registos++;
+  }));
+  const linhas=Object.values(acumulado).sort((a,b)=>b.desvioAbsTotal-a.desvioAbsTotal);
+  const totalVendidos=Object.values(totalVendido).reduce((a,b)=>a+b,0);
+  const totalDesvios=linhas.reduce((a,e)=>a+e.desvioAbsTotal,0);
+  let html=`<p><span class="badge green">Total vendido: ${totalVendidos}</span> <span class="badge ${totalDesvios?"red":"green"}">Desvios acumulados: ${totalDesvios}</span> <span class="badge">Registos: ${inventarios.length}</span></p>`;
+  if(!linhas.length){html+='<p class="muted">Sem inventários registados.</p>'; div.innerHTML=html; return}
+  html+=`<h3>Produtos com mais desvios</h3><div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Item</th><th>Vendido</th><th>Faltas</th><th>Excessos</th><th>Desvio acumulado</th></tr></thead><tbody>${linhas.slice(0,10).map(e=>`<tr><td><strong>${e.nome}</strong><br><span class="muted">${e.codigo||"-"}</span></td><td>${e.vendido}</td><td>${e.faltas}</td><td>${e.excessos}</td><td>${e.desvioAbsTotal}</td></tr>`).join("")}</tbody></table></div>`;
+  div.innerHTML=html;
+}
+
+socket.on("eventosAtualizados",d=>{eventos=d;mostrarEventos(); if(eventoAtual){ const ev=eventos.find(e=>e.id===eventoAtual.id); if(ev){eventoAtual=ev; const badge=document.getElementById("eventoAtualBadge"); if(badge) badge.innerText=`Evento: ${eventoAtual.nome}${eventoAtual.data ? " · "+eventoAtual.data : ""}`; } }});
+socket.on("catalogoAtualizado",d=>{catalogo=d;refreshTudo()});
+socket.on("locaisAtualizados",d=>{locais=d;refreshTudo()});
+socket.on("diasAtualizados",d=>{dias=d;mostrarInventario()});
+socket.on("inventariosAtualizados",async d=>{inventarios=d; await carregarInventarios(); mostrarInventario()});
+socket.on("pedidosAtualizados",d=>{
+  pedidos=d;
+  mostrarPedidos();
+
+  if(pedidoAtual){
+    const n=pedidos.find(p=>p.id===pedidoAtual.id);
+    if(n){pedidoAtual=n;abrirPedido(n.id)}
+  }
+
+  if(ultimoPedidoCliente){
+    const n=pedidos.find(p=>p.id===ultimoPedidoCliente.id);
+    if(n){ultimoPedidoCliente=n;mostrarUltimoPedido();atualizarPedidoNoHistorico(n)}
+  }
+});
+socket.on("novoPedido",p=>{pedidos.push(p);mostrarPedidos()});
+socket.on("pedidoAtualizado",p=>{
+  const idx=pedidos.findIndex(x=>x.id===p.id);
+  if(idx>=0)pedidos[idx]=p;
+
+  if(pedidoAtual&&pedidoAtual.id===p.id){pedidoAtual=p;abrirPedido(p.id)}
+  if(ultimoPedidoCliente&&ultimoPedidoCliente.id===p.id){ultimoPedidoCliente=p;mostrarUltimoPedido();atualizarPedidoNoHistorico(p)}
+  atualizarPedidoNoHistorico(p);
+
+  mostrarPedidos();
+});
+
+mostrarCarrinho();
+</script>
+</body>
+</html>
