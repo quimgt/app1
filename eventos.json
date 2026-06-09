@@ -1,0 +1,32 @@
+{
+  "contadorEventos": 2,
+  "eventos": [
+    {
+      "id": 1,
+      "nome": "YUNIK",
+      "data": "",
+      "criadoEm": "2026-06-09T16:11:35.092Z",
+      "catalogo": [],
+      "locais": [],
+      "pedidos": [],
+      "dias": [
+        {
+          "id": 1,
+          "nome": "Dia 1",
+          "data": "",
+          "criadoEm": "2026-06-09T16:11:35.092Z"
+        }
+      ],
+      "inventarios": [],
+      "consultasStock": [],
+      "transferenciasLocais": [],
+      "contadorPedidos": 1,
+      "contadorCatalogo": 1,
+      "contadorLocais": 1,
+      "contadorDias": 2,
+      "contadorInventarios": 1,
+      "contadorConsultasStock": 1,
+      "contadorTransferenciasLocais": 1
+    }
+  ]
+}
