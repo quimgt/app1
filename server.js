@@ -11,6 +11,10 @@ const io = new Server(server);
 app.use(express.json({ limit: "4mb" }));
 app.use(express.static("public"));
 
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 const DATA_FILE = path.join(__dirname, "eventos.json");
 const BACKUP_DIR = path.join(__dirname, "backups");
 
